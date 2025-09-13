@@ -10,7 +10,7 @@ _FREQ_RE = re.compile(r"([0-9]*\.?[0-9]+)GHz", re.IGNORECASE)
 
 
 def parse_ram(value: str) -> float:
-    """Extract RAM size in GB."""
+    # Extract RAM size in GB
     if not isinstance(value, str):
         return np.nan
     m = _RAM_RE.search(value)
@@ -18,7 +18,7 @@ def parse_ram(value: str) -> float:
 
 
 def parse_cpu(value: str) -> Dict[str, Any]:
-    """Parse CPU string into brand, family, frequency (GHz)."""
+    # Parse CPU string into brand, family, frequency (GHz)
     if not isinstance(value, str):
         return {"cpu_brand": "UNK", "cpu_family": "UNK", "cpu_freq_ghz": np.nan}
 
@@ -45,7 +45,7 @@ def parse_cpu(value: str) -> Dict[str, Any]:
 
 
 def parse_memory(value: str) -> Dict[str, float]:
-    """Decompose memory string into SSD/HDD/Flash GB values."""
+    # Decompose memory string into SSD/HDD/Flash GB values
     if not isinstance(value, str):
         return {"mem_ssd_gb": 0.0, "mem_hdd_gb": 0.0, "mem_flash_gb": 0.0}
 
@@ -78,14 +78,14 @@ def parse_memory(value: str) -> Dict[str, float]:
 
 
 def parse_gpu(value: str) -> Dict[str, Any]:
-    """Extract GPU brand."""
+    # Extract GPU brand
     if not isinstance(value, str) or not value.strip():
         return {"gpu_brand": "UNK"}
     return {"gpu_brand": value.split()[0]}  # First word is usually the brand
 
 
 def parse_screen(resolution: str, inches: float) -> Dict[str, Any]:
-    """Parse screen resolution, detect touch/IPS, compute PPI."""
+    # Parse screen resolution, detect touch/IPS, compute PPI
     if not isinstance(resolution, str):
         return {"res_width": np.nan, "res_height": np.nan, "is_touch": 0.0, "is_ips": 0.0, "ppi": np.nan}
 
@@ -118,21 +118,21 @@ def parse_screen(resolution: str, inches: float) -> Dict[str, Any]:
     }
 
 
-# --- Simple custom transformers (no sklearn allowed) ---
+#Transformers
 
 class SimpleImputer:
-    """Custom imputer that fills missing values with column means."""
+    # Custom imputer that fills missing values with column means
     def __init__(self):
         self.means: Dict[str, float] = {}  # Store mean values for each column
 
     def fit(self, df: pd.DataFrame, numeric_cols: List[str]):
-        """Learn the mean values for each numeric column."""
+        # Learn the mean values for each numeric column
         for c in numeric_cols:
             self.means[c] = float(df[c].mean()) if len(df[c].dropna()) else 0.0
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Fill missing values with learned means."""
+        # Fill missing values with learned means
         out = df.copy()
         for c, m in self.means.items():
             out[c] = out[c].fillna(m)
@@ -140,12 +140,12 @@ class SimpleImputer:
 
 
 class OneHotEncoder:
-    """Custom one-hot encoder that converts categorical variables to binary vectors."""
+    # Custom one-hot encoder that converts categorical variables to binary vectors
     def __init__(self):
         self.categories: Dict[str, List[str]] = {}  # Store unique categories for each column
 
     def fit(self, df: pd.DataFrame, cat_cols: List[str]):
-        """Learn the unique categories for each categorical column."""
+        # Learn the unique categories for each categorical column
         for c in cat_cols:
             seen = []
             for v in df[c].fillna("__NA__"):  # Handle NaN values
@@ -155,7 +155,7 @@ class OneHotEncoder:
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Convert categorical columns to one-hot encoded binary columns."""
+        # Convert categorical columns to one-hot encoded binary columns
         out = df.copy()
         all_new = []
         for c, cats in self.categories.items():
@@ -174,14 +174,14 @@ class OneHotEncoder:
 
 
 class StandardScaler:
-    """Custom standard scaler that normalizes features to zero mean and unit variance."""
+    # Custom standard scaler that normalizes features to zero mean and unit variance
     def __init__(self):
         self.means: Optional[np.ndarray] = None  # Store column means
         self.stds: Optional[np.ndarray] = None   # Store column standard deviations
         self.columns: List[str] = []             # Store column names
 
     def fit(self, df: pd.DataFrame):
-        """Learn the mean and standard deviation for each column."""
+        # Learn the mean and standard deviation for each column
         self.columns = list(df.columns)
         self.means = df.mean(axis=0).to_numpy(dtype=float)
         stds = df.std(axis=0, ddof=0).to_numpy(dtype=float)
@@ -190,15 +190,15 @@ class StandardScaler:
         return self
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Scale features using learned parameters: (x - mean) / std."""
+        # Scale features using learned parameters: (x - mean) / std
         arr = (df[self.columns].to_numpy(dtype=float) - self.means) / self.stds
         return pd.DataFrame(arr, columns=self.columns, index=df.index)
 
 
-# --- Core pipeline ---
+# pipeline
 
 def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Apply domain-specific feature engineering for laptops."""
+    # Apply domain-specific feature engineering for laptops
     df = df.copy()
 
     # Convert screen size and weight to numeric values
@@ -232,7 +232,7 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def preprocess_training(df: pd.DataFrame, target: str) -> Tuple[pd.DataFrame, np.ndarray, Dict[str, Any]]:
-    """Preprocess training data -> (X, y, processors)."""
+    # Preprocess training data -> (X, y, processors)
     df_feat = engineer_features(df)  # Create engineered features
     y = df_feat[target].to_numpy(dtype=float)  # Extract target variable
     X = df_feat.drop(columns=[target])  # Remove target from features
@@ -265,7 +265,7 @@ def preprocess_training(df: pd.DataFrame, target: str) -> Tuple[pd.DataFrame, np
 
 
 def preprocess_inference(df: pd.DataFrame, processors: Dict[str, Any]) -> Tuple[pd.DataFrame, Optional[np.ndarray]]:
-    """Apply preprocessing pipeline to new data using fitted processors."""
+    # Apply preprocessing pipeline to new data using fitted processors
     target = processors.get("target")
     df_feat = engineer_features(df)  # Apply same feature engineering
 
@@ -302,4 +302,4 @@ def preprocess_inference(df: pd.DataFrame, processors: Dict[str, Any]) -> Tuple[
 
 
 __all__ = ["preprocess_training", "preprocess_inference"]
-# === END FILE ===
+
