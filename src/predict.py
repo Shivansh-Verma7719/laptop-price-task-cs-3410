@@ -1,4 +1,3 @@
-# === FILE: src/predict.py ===
 import argparse
 import pickle
 import numpy as np
@@ -30,9 +29,9 @@ class LinearRegressionGD:
         n = len(Xb)
 
         for _ in range(self.n_iter):
-            preds = Xb @ self.w  # Make predictions
+            preds = np.dot(Xb, self.w)  # Make predictions
             res = preds - y      # Calculate residuals
-            grad = (2 / n) * (Xb.T @ res)  # Compute gradient
+            grad = (2 / n) * np.dot(Xb.T, res)  # Compute gradient
 
             # Clip gradient to prevent exploding gradients
             g_norm = np.linalg.norm(grad)
@@ -48,7 +47,7 @@ class LinearRegressionGD:
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         """Make predictions on new data."""
-        return add_bias(X) @ self.w
+        return np.dot(add_bias(X), self.w)
 
 
 def polynomial_features(X: np.ndarray, degree: int) -> np.ndarray:
@@ -79,7 +78,72 @@ class PolynomialRegressionGD:
         return self.model.predict(X_poly)
 
 
-# --- Metrics ---
+class RidgeRegressionGD:
+    """Ridge regression (L2 regularization) implemented with gradient descent."""
+    def __init__(self, lr=0.001, n_iter=3000, alpha=0.5):
+        self.lr = lr          # Learning rate for gradient descent
+        self.n_iter = n_iter  # Maximum number of iterations
+        self.alpha = alpha    # L2 regularization strength
+        self.w = None         # Weight vector (including bias)
+
+    def fit(self, X, y):
+        """Train the model using gradient descent with L2 regularization."""
+        Xb = add_bias(X)  # Add bias term (column of ones)
+        self.w = np.zeros(Xb.shape[1])  # Initialize weights to zeros
+        n = len(Xb)
+
+        for _ in range(self.n_iter):
+            preds = np.dot(Xb, self.w)  # Make predictions
+            # L2 regularization (don't penalize bias term)
+            reg = self.alpha * np.concatenate([[0.0], self.w[1:]])
+            grad = (2 / n) * np.dot(Xb.T, (preds - y)) + reg  # Compute gradient with regularization
+
+            # Update weights
+            new_w = self.w - self.lr * grad
+            if not np.all(np.isfinite(new_w)):
+                break
+            self.w = new_w
+        return self
+
+    def predict(self, X):
+        """Make predictions on new data."""
+        return np.dot(add_bias(X), self.w)
+
+
+class LassoRegressionGD:
+    """Lasso regression (L1 regularization) implemented with gradient descent."""
+    def __init__(self, lr=0.001, n_iter=4000, alpha=0.01):
+        self.lr = lr          # Learning rate for gradient descent
+        self.n_iter = n_iter  # Maximum number of iterations
+        self.alpha = alpha    # L1 regularization strength
+        self.w = None         # Weight vector (including bias)
+
+    def fit(self, X, y):
+        """Train the model using gradient descent with L1 regularization."""
+        Xb = add_bias(X)  # Add bias term (column of ones)
+        self.w = np.zeros(Xb.shape[1])  # Initialize weights to zeros
+        n = len(Xb)
+
+        for _ in range(self.n_iter):
+            preds = np.dot(Xb, self.w)  # Make predictions
+            grad = (2 / n) * np.dot(Xb.T, (preds - y))  # Base gradient
+            # L1 regularization (don't penalize bias term)
+            l1 = self.alpha * np.concatenate([[0.0], np.sign(self.w[1:])])
+            full_grad = grad + l1  # Add L1 penalty to gradient
+
+            # Update weights
+            new_w = self.w - self.lr * full_grad
+            if not np.all(np.isfinite(new_w)):
+                break
+            self.w = new_w
+        return self
+
+    def predict(self, X):
+        """Make predictions on new data."""
+        return np.dot(add_bias(X), self.w)
+
+
+# Metrics
 
 def mse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     return float(np.mean((y_true - y_pred) ** 2))
@@ -95,7 +159,7 @@ def r2_score(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     return 0.0 if ss_tot == 0 else float(1 - ss_res / ss_tot)
 
 
-# --- Helpers ---
+# Helpers
 
 def load_bundle(path: str) -> Dict[str, Any]:
     with open(path, "rb") as f:
@@ -111,6 +175,7 @@ def main():
     parser.add_argument("--target", default="Price")
     args = parser.parse_args()
 
+# for testing
     if not os.path.exists(args.model_path):
         raise FileNotFoundError(
             f"Model file not found: {args.model_path}. Train a model first with train_model.py."
@@ -158,4 +223,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-# === END FILE ===
+

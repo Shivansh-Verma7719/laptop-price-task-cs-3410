@@ -38,9 +38,9 @@ class LinearRegressionGD:
         n = len(Xb)
 
         for _ in range(self.n_iter):
-            preds = Xb @ self.w  # Make predictions
+            preds = np.dot(Xb, self.w)  # Make predictions
             res = preds - y      # Calculate residuals
-            grad = (2 / n) * (Xb.T @ res)  # Compute gradient
+            grad = (2 / n) * np.dot(Xb.T, res)  # Compute gradient
 
             # Clip gradient to prevent exploding gradients
             g_norm = np.linalg.norm(grad)
@@ -57,7 +57,7 @@ class LinearRegressionGD:
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         # Make predictions on new data
-        return add_bias(X) @ self.w
+        return np.dot(add_bias(X), self.w)
 
 class RidgeRegressionGD:
     # Ridge regression (L2 regularization) implemented with gradient descent
@@ -75,10 +75,10 @@ class RidgeRegressionGD:
         n = len(Xb)
 
         for _ in range(self.n_iter):
-            preds = Xb @ self.w  # Make predictions
+            preds = np.dot(Xb, self.w)  # Make predictions
             # L2 regularization (don't penalize bias term)
             reg = self.alpha * np.concatenate([[0.0], self.w[1:]])
-            grad = (2 / n) * (Xb.T @ (preds - y)) + reg  # Compute gradient with regularization
+            grad = (2 / n) * np.dot(Xb.T, (preds - y)) + reg  # Compute gradient with regularization
 
             # Clip gradient to prevent exploding gradients
             g_norm = np.linalg.norm(grad)
@@ -95,7 +95,7 @@ class RidgeRegressionGD:
 
     def predict(self, X):
         # Make predictions on new data
-        return add_bias(X) @ self.w
+        return np.dot(add_bias(X), self.w)
 
 class LassoRegressionGD:
     # Lasso regression (L1 regularization) implemented with gradient descent
@@ -113,8 +113,8 @@ class LassoRegressionGD:
         n = len(Xb)
 
         for _ in range(self.n_iter):
-            preds = Xb @ self.w  # Make predictions
-            grad = (2 / n) * (Xb.T @ (preds - y))  # Base gradient
+            preds = np.dot(Xb, self.w)  # Make predictions
+            grad = (2 / n) * np.dot(Xb.T, (preds - y))  # Base gradient
             # L1 regularization (don't penalize bias term)
             l1 = self.alpha * np.concatenate([[0.0], np.sign(self.w[1:])])
             full_grad = grad + l1  # Add L1 penalty to gradient
@@ -134,7 +134,7 @@ class LassoRegressionGD:
 
     def predict(self, X):
         # Make predictions on new data
-        return add_bias(X) @ self.w
+        return np.dot(add_bias(X), self.w)
 
 def polynomial_features(X: np.ndarray, degree: int) -> np.ndarray:
     # Generate polynomial features up to given degree
